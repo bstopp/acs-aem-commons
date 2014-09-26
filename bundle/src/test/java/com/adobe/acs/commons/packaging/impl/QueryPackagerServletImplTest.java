@@ -33,7 +33,6 @@ import org.apache.sling.commons.testing.sling.MockResource;
 import org.apache.sling.commons.testing.sling.MockResourceResolver;
 import org.apache.sling.commons.testing.sling.MockSlingHttpServletRequest;
 import org.apache.sling.commons.testing.sling.MockSlingHttpServletResponse;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,14 +53,13 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class ACLPackagerServletImplTest {
+public class QueryPackagerServletImplTest {
 
-    static final String CONTENT_RESOURCE_PATH = "/etc/acs-commons/packages/acl-packager-test/jcr:content";
-    static final String CONTENT_RESOURCE_TYPE = "acs-commons/components/utilities/packager/acl-packager";
+    static final String CONTENT_RESOURCE_PATH = "/etc/acs-commons/packages/query-packager-test/jcr:content";
+    static final String CONTENT_RESOURCE_TYPE = "acs-commons/components/utilities/packager/query-packager";
 
     SuccessMockResourceResolver resourceResolver = new SuccessMockResourceResolver();
     ErrorMockResourceResolver errorResourceResolver = new ErrorMockResourceResolver();
@@ -76,12 +74,14 @@ public class ACLPackagerServletImplTest {
     @Mock
     PackageHelper packageHelper;
 
-    @Mock JcrPackage jcrPackage;
+    @Mock
+    JcrPackage jcrPackage;
 
-    @Mock Session session;
+    @Mock
+    Session session;
 
     @InjectMocks
-    ACLPackagerServletImpl aclPackagerServlet;
+    QueryPackagerServletImpl queryPackagerServlet;
 
     @SuppressWarnings("unchecked")
     @Before
@@ -90,7 +90,6 @@ public class ACLPackagerServletImplTest {
         Map<String, Object> map = new HashMap<String, Object>();
 
         map.put("includePatterns", new String[]{});
-        map.put("principalNames", new String[]{});
         map.put("conflictResolution", "IncrementVersion");
 
         ValueMap properties = new ValueMapDecorator(map);
@@ -110,17 +109,12 @@ public class ACLPackagerServletImplTest {
 
         when(packageHelper.getSuccessJSON(any(JcrPackage.class))).thenReturn("{\"status\": \"success\"}");
         when(packageHelper.getErrorJSON(any(String.class))).thenReturn("{\"status\": \"error\"}");
-        when(packageHelper.getPathFilterSetPreviewJSON(any(Collection.class))).thenReturn("{\"status\": \"preview\"}");
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        reset(packageHelper, session, jcrPackage);
+        when(packageHelper.getPreviewJSON(any(Collection.class))).thenReturn("{\"status\": \"preview\"}");
     }
 
     @Test
     public void testDoPost_success() throws Exception {
-        final String resourcePath = "/etc/acs-commons/packages/acl-packager-test/jcr:content";
+        final String resourcePath = "/etc/acs-commons/packages/query-packager-test/jcr:content";
         final String selectors = "package";
         final String extension = "json";
         final String suffix = "";
@@ -136,7 +130,7 @@ public class ACLPackagerServletImplTest {
         request.setResourceResolver(resourceResolver);
         request.setResource(contentResource);
 
-        aclPackagerServlet.doPost(request, response);
+        queryPackagerServlet.doPost(request, response);
 
         final JSONObject actual = new JSONObject(response.getOutput().toString());
         assertEquals("success", actual.optString("status", "error"));
@@ -145,7 +139,7 @@ public class ACLPackagerServletImplTest {
 
     @Test
     public void testDoPost_preview() throws Exception {
-        final String resourcePath = "/etc/acs-commons/packages/acl-packager-test/jcr:content";
+        final String resourcePath = "/etc/acs-commons/packages/query-packager-test/jcr:content";
         final String selectors = "package";
         final String extension = "json";
         final String suffix = "";
@@ -160,9 +154,8 @@ public class ACLPackagerServletImplTest {
         request.setResourceResolver(resourceResolver);
         request.setResource(contentResource);
 
-        aclPackagerServlet.doPost(request, response);
+        queryPackagerServlet.doPost(request, response);
         String tmp = response.getOutput().toString();
-        System.out.println(tmp);
         final JSONObject actual = new JSONObject(tmp);
 
         assertEquals("preview", actual.optString("status", "error"));
@@ -170,7 +163,7 @@ public class ACLPackagerServletImplTest {
 
     @Test
     public void testDoPost_error() throws Exception {
-        final String resourcePath = "/etc/acs-commons/packages/acl-packager-test/jcr:content";
+        final String resourcePath = "/etc/acs-commons/packages/query-packager-test/jcr:content";
         final String selectors = "package";
         final String extension = "json";
         final String suffix = "";
@@ -186,7 +179,7 @@ public class ACLPackagerServletImplTest {
         request.setResourceResolver(errorResourceResolver);
         request.setResource(contentResource);
 
-        aclPackagerServlet.doPost(request, response);
+        queryPackagerServlet.doPost(request, response);
 
         final JSONObject actual = new JSONObject(response.getOutput().toString());
         assertEquals("error", actual.optString("status", "success"));
@@ -200,22 +193,13 @@ public class ACLPackagerServletImplTest {
             super();
 
             results = new LinkedList<Resource>();
-            results.add(new MockResource(this, "/content/dam/rep:policy", ""));
-            results.add(new MockResource(this, "/content/acs-commons/rep:policy", ""));
-            results.add(new MockResource(this, "/etc/workflow/packages/rep:policy", ""));
-            results.add(new MockResource(this, "/var/audit/1/2/3/rep:policy", ""));
-            results.add(new MockResource(this, "/home/groups/authors/rep:policy", ""));
+            results.add(new MockResource(this, "/content/one", ""));
+            results.add(new MockResource(this, "/content/two", ""));
+            results.add(new MockResource(this, "/content/three", ""));
 
             for(Resource resource : results) {
                 this.addResource(resource);
             }
-
-            this.addResource(new MockResource(this, "/content/dam/rep:policy/allow0", ""));
-            this.addResource(new MockResource(this, "/content/dam/rep:policy/allow1", ""));
-            this.addResource(new MockResource(this, "/content/acs-commons/rep:policy/deny0", ""));
-            this.addResource(new MockResource(this, "/etc/workflow/packages/rep:policy/allow0", ""));
-            this.addResource(new MockResource(this, "/var/audit/1/2/3/rep:policy/allow", ""));
-            this.addResource(new MockResource(this, "/home/groups/authors/rep:policy/allow0", ""));
         }
 
         @Override
@@ -265,15 +249,7 @@ public class ACLPackagerServletImplTest {
             super();
 
             results = new LinkedList<Resource>();
-            results.add(new MockResource(this, "/content/dam/rep:policy", ""));
-            results.add(new MockResource(this, "/content/acs-commons/rep:policy", ""));
-            results.add(new MockResource(this, "/etc/workflow/packages/rep:policy", ""));
-            results.add(new MockResource(this, "/var/audit/1/2/3/rep:policy", ""));
-            results.add(new MockResource(this, "/home/groups/authors/rep:policy", ""));
 
-            for(Resource resource : results) {
-                this.addResource(resource);
-            }
         }
 
         @Override
