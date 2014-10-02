@@ -20,12 +20,11 @@
 /*global CQ: false, ACS: false */
 CQ.Ext.ns("ACS.CQ");
 /**
- * @class ACS.CQ.MultiFieldPanel
- * @extends CQ.form.Panel
- * <p>The MultiFieldPanel widget is a replacement for the normal multifield widget which
- * supports multiple structures in a single JCR property. It does this by storing a set of
- * key/value pairs serialized as a JSON object. The keys for each pair is defined by setting the
- * 'key' property on the field.</p>
+ * @class ACS.CQ.MultiDialogFieldSeet
+ * @extends CQ.form.Multifield
+ * <p>The MultiDialogFieldSet widget is a replacement for the normal multifield widget which
+ * supports multiple structures as a set of child nodes of the current component. The configuration
+ * is either a fully defined Dialog referenced by a property, or a set of children widgets.</p>
  */
 ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.MultiField, {
     
