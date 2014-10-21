@@ -209,9 +209,9 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
             item = this.insert(itemIndex, { indexPosition : itemIndex }),
             form = this.findParentByType('form');
 
-        if (form) {
-            form.getForm().add(item.field);
-        }
+//        if (form) {
+//            form.getForm().add(item.field);
+//        }
         this.doLayout();
 
         if (item.field.processPath) {
@@ -522,7 +522,7 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
             });
 
             for (item in fieldValues) {
-                // TODO need to add fields to form when submitting
+                //TODO need to add fields to form when submitting
                 window.console.log(item);
             }
 
