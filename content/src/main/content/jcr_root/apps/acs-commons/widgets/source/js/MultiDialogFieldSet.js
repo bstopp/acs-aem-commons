@@ -30,6 +30,8 @@ CQ.Ext.ns('ACS.CQ');
  */
 ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
 
+    // TODO Get rid of the console logs
+
     /**
      * @config {String} addItemLabel The label to display for the addItem control. Defaults to 'Add Item'.
      */
@@ -126,6 +128,8 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     },
 
     initComponent : function() {
+
+        var container;
         ACS.CQ.MultiDialogFieldSet.superclass.initComponent.call(this);
 
         this.on('resize', function() {
@@ -166,6 +170,9 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
                 }
             }, this);
         });
+
+        container = this.findParentByType('dialog');
+        window.console.log(container);
     },
 
     // private
@@ -205,13 +212,13 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
      *            value The value of the field
      */
     addItem : function(value) {
-        var itemIndex = this.items.getCount() - 1,
-            item = this.insert(itemIndex, { indexPosition : itemIndex }),
-            form = this.findParentByType('form');
+        var itemIndex = this.items.getCount() - 1, item = this.insert(itemIndex, {
+            indexPosition : itemIndex
+        }), form = this.findParentByType('form');
 
-//        if (form) {
-//            form.getForm().add(item.field);
-//        }
+        if (form) {
+            form.getForm().add(item.field);
+        }
         this.doLayout();
 
         if (item.field.processPath) {
@@ -298,11 +305,12 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
     hiddenFields : {},
 
-    dialogConfig : '',
+    dialog : {},
+
+    hiddenfields : [],
 
     constructor : function(config) {
-        var fieldConfig = CQ.Util.copyObject(config.fieldConfig), 
-            items = [];
+        var fieldConfig = CQ.Util.copyObject(config.fieldConfig), items = [];
 
         this.constructButtonConfig(items, fieldConfig);
 
@@ -423,6 +431,8 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
             dialogConfig = config;
         }
 
+        // TODO move the dialog to below the input field (y attribute)
+
         if (dialogConfig) {
             dialogConfig.buttons = {
                 'jcr:primaryType' : 'cq:WidgetCollection',
@@ -435,7 +445,8 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                 },
                 'cancel' : CQ.Dialog.CANCEL
             };
-            // Just in case the dialog isn't quite defined correctly:
+
+            // Just in case the dialog isn't quite defined correctly
             dialogConfig = CQ.WCM.getDialogConfig(dialogConfig);
             this.dialog = CQ.WCM.getDialog(dialogConfig);
         } else {
@@ -490,7 +501,7 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
     },
 
     setIndexPosition : function(position) {
-        this.indexPosition = position; 
+        this.indexPosition = position;
     },
 
     showDialog : function() {
@@ -501,40 +512,58 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
         // this.dialog.loadContent(editConfig.path);
         this.dialog.show();
     },
-    
+
     dialogOk : function(dialog) {
-        window.console.log(dialog);
-        var item,
-            mainDialog = this.findParentByType('dialog'),
-            fieldValues = dialog.form.getFieldValues();
+        var item, mainDialog = this.findParentByType('dialog'), fieldValues = dialog.form.getValues();
 
         // Act as if this was a real submission, but don't actually submit the form
         if (dialog) {
-            if (dialog.fireEvent("beforesubmit", dialog) === false) {
-                return false;
-            }
-            dialog.form.items.each(function(field) {
-                // clear fields with emptyText so emptyText is not submitted
-                if (field.emptyText && field.el && field.el.dom
-                        && field.el.dom.value === field.emptyText) {
-                    field.setRawValue("");
+            if (dialog.form && dialog.form.isValid()) {
+
+                if (dialog.fireEvent("beforesubmit", dialog) === false) {
+                    return false;
                 }
-            });
+                dialog.form.items.each(function(field) {
+                    // clear fields with emptyText so emptyText is not submitted
+                    if (field.emptyText && field.el && field.el.dom && field.el.dom.value === field.emptyText) {
+                        field.setRawValue("");
+                    }
+                });
 
-            for (item in fieldValues) {
-                //TODO need to add fields to form when submitting
-                window.console.log(item);
+                this.buildHiddenFields(fieldValues);
+
+                dialog[dialog.closeAction]();
+            } else {
+                CQ.Ext.Msg.show({
+                    title : CQ.I18n.getMessage('Validation Failed'),
+                    msg : CQ.I18n.getMessage('Verify the values of the marked fields.'),
+                    buttons : CQ.Ext.Msg.OK,
+                    icon : CQ.Ext.Msg.ERROR
+                });
             }
-
-            dialog[dialog.closeAction]();
-        } else {
-            CQ.Ext.Msg.show({
-                title : CQ.I18n.getMessage('Validation Failed'),
-                msg : CQ.I18n.getMessage('Verify the values of the marked fields.'),
-                buttons : CQ.Ext.Msg.OK,
-                icon : CQ.Ext.Msg.ERROR
-            });
         }
+    },
+
+    buildHiddenFields : function(fieldValues) {
+        var self = this;
+
+        // Field Values should be name/value where value is a String or Array of Strings
+
+        $.each(fieldValues, function(idx, val) {
+            
+            // Ingore non field values; like _charset_ and :status
+            if (typeof idx === 'string' && idx.indexOf('_') !== 0 
+                    && idx.indexOf(':') !== 0) {
+
+
+                if (typeof val === 'object') {
+                    self.buildHiddenFields(val);
+                } else {
+                    window.console.log('Idx: [' + idx + '] Val: [' + val + ']');
+                }
+
+            }
+        });
     }
 
 });
