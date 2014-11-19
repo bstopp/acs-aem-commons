@@ -43,7 +43,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
 
     constructor : function(config) {
 
-        // TODO When this is added to a dialog, make sure you can't close that dialog, while there is an ITEM one open!
         var list = this, 
         items = [],
         defaultFieldConfig = {
@@ -188,7 +187,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     calculateFieldWidth : function(item) {
         try {
             
-            // TODO fix this so it doesn't rely on the hidden field to identify that the first input should calc field size.
             var i = 0, button, w;
             this.fieldWidth = this.getSize().width - 2 * this.bodyPadding; // total row width
             for (i = 0; i < item.items.length; i++) {
@@ -256,8 +254,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     },
 
     processPath : function(path) {
-        // TODO Don't forget to process the path on the loaded dialogs!
-        // TODO This may need to be done when _creating_ the dialog, since it's not done in the constructor anymore
 
         this.path = path;
     },
@@ -267,7 +263,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     // },
 
     getValue : function() {
-        // TODO Rewrite this based on dialogs; return the fieldName or display name for each item and that's what will
         // be used to populate the value
         var value = [];
         this.items.each(function(item, index/* , length */) {
@@ -280,7 +275,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     },
 
     setValue : function(value) {
-        // TODO Rewrite this based on dialogs
         // Don't populate the form if _this_dialog, this dialog doesn't need to store the values of this item
         this.fireEvent('change', this, value, this.getValue());
         var oldItems = this.items, i = 0, prop;
@@ -295,7 +289,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
         if (typeof value === 'object') {
             for (prop in value) {
                 if (value.hasOwnProperty(prop) && prop.indexOf(this.fieldConfig.itemName) === 0) {
-                    // TODO Pretty sure this is wrong now
                     this.addItem(prop, value[prop]);
                 }
             }
@@ -318,7 +311,6 @@ CQ.Ext.reg('multidialogfieldset', ACS.CQ.MultiDialogFieldSet);
 ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
     
-    // TODO reduce the footprint of these things
     indexPosition : 0,
 
     hiddenField : undefined,
@@ -409,7 +401,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                     template : new CQ.Ext.Template('<span><button class="x-btn" type="{0}"></button></span>'),
                     handler : function() {
                         var parent = item.ownerCt;
-                        //TODO add hidden field to delete the item
                         parent.remove(item);
                         parent.fireEvent('removeditem', parent);
                     }
@@ -502,7 +493,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 //            dialogConfig = config;
 //        }
 //
-//        // TODO move the dialog to below the input field (y attribute)
 //
 //        if (dialogConfig) {
 //            dialogConfig.buttons = {
@@ -534,7 +524,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
 
     remove : function() {
-        // TODO When removed; reorder and 
         this.ownerCt.remove(this, true);
     },
 
@@ -546,7 +535,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
      * @member ACS.CQ.MultiDialogFieldSet.Item
      */
     reorder : function(item) {
-        // TODO Rewrite this too reorder the items/dialogs
         if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
             var value = item.field.getValue();
             item.field.setValue(this.field.getValue());
@@ -578,7 +566,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
      */
     getValue : function() {
         /*
-         * TODO This should return the field label? since this is only for use in the display of the managing dialog
          */
         return this.field.getValue();
     },
@@ -591,7 +578,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
      * @member ACS.CQ.MultiDialogFieldSet.Item
      */
     setValue : function(value) {
-        // TODO set the displayName, not the value of the field.
         this.field.setValue(value[this.fieldConfig.displayName]);
     },
 
@@ -639,10 +625,8 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 //        if (!this.dialog) {
 //            this.constructDialog(this.dialogConfig);
 //        }
-        // TODO Add an icon for the display to show it's not the primary dialog.
 //        this.dialog.setTitle(CQ.I18n.getMessage('Edit {0} Item', this.getValue()));
 
-        // TODO Load the content!
         // this.dialog.loadContent(editConfig.path);
 //        this.dialog.show();
     },
@@ -658,7 +642,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                 return false;
             }
             this.dialog.form.url = this.path;
-            //TODO don't check for this, rewrite it so it's registered when the dialog is created, that way you know it only happens once
             if (!this.dialogRegistered) {
                 mainform.on('beforeaction', CQ.Ext.createDelegate(this.dialog.ok, this.dialog, [button]));
                 this.dialogRegistered = true;
