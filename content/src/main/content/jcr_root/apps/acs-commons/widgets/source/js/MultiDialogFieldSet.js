@@ -39,20 +39,15 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     /**
      * @config {String} addItemLabel The label to display for the addItem control. Defaults to 'Add Item'.
      */
-    
 
-    // Padding inside of the border box. 
+    // Padding inside of the border box.
     bodyPadding : 4,
-
-    
 
     constructor : function(config) {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#constructor start.');
 
-        
         // TODO When this is added to a dialog, make sure you can't close that dialog, while there is an ITEM one open!
-        var self = this, 
-        items = [];
+        var self = this, items = [];
 
         if (typeof config.orderable === 'undefined') {
             config.orderable = true;
@@ -124,7 +119,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
             } ]
         });
 
-        
         ACS.CQ.MultiDialogFieldSet.superclass.constructor.call(this, config);
 
         this.addEvents(
@@ -188,7 +182,7 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#initComponent end.');
     },
 
-    processPath: function(path) {
+    processPath : function(path) {
         this.path = path;
     },
 
@@ -205,15 +199,13 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
      *            node The name of the node
      */
     addItem : function(nodeName) {
-        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#addItem Adding item with node name \'{0}\'.', [nodeName]);
+        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#addItem Adding item with node name \'{0}\'.', [ nodeName ]);
 
         // This contains a panel with the "Add Item" link and button.
-        var prev, form,
-        itemIndex = this.items.getCount() - 1,
-        item = this.insert(itemIndex, {});
+        var prev, form, itemIndex = this.items.getCount() - 1, item = this.insert(itemIndex, {});
 
         if (nodeName) {
-            item.processPath(this.path + '/' + this.name + '/' +  nodeName);
+            item.processPath(this.path + '/' + this.name + '/' + nodeName);
         }
         item.loadDialog();
         this.doLayout();
@@ -222,15 +214,14 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     },
 
     setValue : function(value) {
-        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#setValue value : \'{0}\'.', [value]);
-        var name,
-        oldItems = this.items;
+        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#setValue value : \'{0}\'.', [ value ]);
+        var name, oldItems = this.items;
 
         this.fireEvent('change', this, value, this.getValue());
         oldItems.each(function(item) {
-           if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
-               this.remove(item, true);
-           } 
+            if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
+                this.remove(item, true);
+            }
         }, this);
 
         this.doLayout();
@@ -244,48 +235,72 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     },
 
     submitItems : function() {
-        var item = this.items.get(0),
-        dialog = this.findParentByType('dialog');
-        
-        dialog.form.on('actioncomplete', item.submitDialog, item);
-        
-        //TODO Chain the items submission;
+        var dialog = this.findParentByType('dialog'), 
+        path = dialog.path, 
+        idx, editable, firstItem, item, previousItem;
+
+        for (idx = 0; idx < this.items.length; idx++) {
+            firstItem = this.items.get(idx);
+            if (firstItem instanceof ACS.CQ.MultiDialogFieldSet.Item) {
+//                firstItem.updatePath(this.path + '/' + this.name + '/' + this.itemNamePrefix + '/' + idx);
+                break;
+            }
+        }
+
+        previousItem = firstItem;
+        for (; idx < this.items.length; idx++) {
+            item = this.items.get(idx);
+
+            if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
+//                item.updatePath(this.path + '/' + this.name + '/' + this.itemNamePrefix + '/' + idx);
+                previousItem.registerNextDialog(item);
+                previousItem = item;
+            }
+
+        }
+
+        // Last Item, refresh the component.
+        editable = CQ.WCM.getEditable(dialog.path);
+        previousItem.dialog.form.on('actioncomplete', editable.refreshSelf, editable);
+
+        // Submit the chain
+        firstItem.submitDialog();
+        // TODO Chain the items submission;
     }
 
-    
-//    addItemFields : function(dialog) {
+// addItemFields : function(dialog) {
 //
-//        // TODO Man this is ugly; what's the CCN on this?
-//        this.items.each(function(item, idx) {
-//            if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
-//                var name, i, fieldName, fieldValue, field,
-//                hiddenObj = {},
-//                fields = item.getValue();
-//                for (name in fields) {
-//                    if (name.indexOf('.') === 0 || name.indexOf('/') === 0) {
+// // TODO Man this is ugly; what's the CCN on this?
+// this.items.each(function(item, idx) {
+// if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
+// var name, i, fieldName, fieldValue, field,
+// hiddenObj = {},
+// fields = item.getValue();
+// for (name in fields) {
+// if (name.indexOf('.') === 0 || name.indexOf('/') === 0) {
 //
-//                        for (i = 0; i < fields[name].length; i++) {
-//                            fieldName = this.name + '/' + this.itemNamePrefix + idx + '/' + fields[name][i].name;
-//                            fieldValue = fields[name][i].value;
-//                            field = dialog.getField(fieldName);
-//                            if (field) {
-//                                if (field instanceof Array && i <= (field.length - 1)) {
-//                                    field[i].setValue(fieldValue);
-//                                } else if (field instanceof Array){
-//                                    hiddenObj[fieldName] = fieldValue;
-//                                }
-//                            } else {
-//                                hiddenObj[fieldName] = fieldValue;
-//                            }
-//                            CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#addItemData hidden item field \'{0}\'=\'{1}\'.', [fieldName, fieldValue]);
-//                        }
+// for (i = 0; i < fields[name].length; i++) {
+// fieldName = this.name + '/' + this.itemNamePrefix + idx + '/' + fields[name][i].name;
+// fieldValue = fields[name][i].value;
+// field = dialog.getField(fieldName);
+// if (field) {
+// if (field instanceof Array && i <= (field.length - 1)) {
+// field[i].setValue(fieldValue);
+// } else if (field instanceof Array){
+// hiddenObj[fieldName] = fieldValue;
+// }
+// } else {
+// hiddenObj[fieldName] = fieldValue;
+// }
+// CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#addItemData hidden item field \'{0}\'=\'{1}\'.', [fieldName, fieldValue]);
+// }
 //                        
-//                    }
-//                }
-//                dialog.addHidden(hiddenObj);
-//            }
-//        }, this);
-//    }
+// }
+// }
+// dialog.addHidden(hiddenObj);
+// }
+// }, this);
+// }
 
 });
 
@@ -294,23 +309,19 @@ CQ.Ext.reg('acs.multidialogfieldset', ACS.CQ.MultiDialogFieldSet);
 /**
  * @private
  * @class ACS.CQ.MultiDialogFieldSet.Item
- * @extends CQ.Ext.Panel The MultiDialogFieldSet.Item is an item in the {@link CQ.form.MultiDialogFieldSet}.
- *          This class is not intended for direct use.
+ * @extends CQ.Ext.Panel The MultiDialogFieldSet.Item is an item in the {@link CQ.form.MultiDialogFieldSet}. This class
+ *          is not intended for direct use.
  * @constructor Creates a new MultiDialogFieldSet.Item.
  * @param {Object}
  *            config The config object
  */
 ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
-    
-
     constructor : function(config) {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#constructor start.');
 
-        var fieldConfig = CQ.Util.copyObject(config.fieldConfig),
-        items = [];
+        var fieldConfig = CQ.Util.copyObject(config.fieldConfig), items = [];
 
-        
         this.constructButtonConfig(items, fieldConfig);
         this.constructDialog(config);
 
@@ -360,8 +371,7 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                         iconCls : 'cq-multifield-up',
                         template : new CQ.Ext.Template('<span><button class="x-btn" type="{0}"></button></span>'),
                         handler : function() {
-                            var parent = self.ownerCt,
-                            idx = parent.items.indexOf(self);
+                            var parent = self.ownerCt, idx = parent.items.indexOf(self);
                             if (idx > 0) {
                                 self.reorder(parent.items.itemAt(idx - 1));
                             }
@@ -376,8 +386,7 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                         iconCls : 'cq-multifield-down',
                         template : new CQ.Ext.Template('<span><button class="x-btn" type="{0}"></button></span>'),
                         handler : function() {
-                            var parent = self.ownerCt,
-                            idx = parent.items.indexOf(self);
+                            var parent = self.ownerCt, idx = parent.items.indexOf(self);
                             if (idx < parent.items.getCount() - 1) {
                                 self.reorder(parent.items.itemAt(idx + 1));
                             }
@@ -420,13 +429,10 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
     constructDialog : function(config) {
 
-        var dialogConfig,
-        self = this,
-        hiddenField = {
+        var dialogConfig, self = this, hiddenField = {
             name : './' + config.displayProperty,
             xtype : 'hidden'
-        },
-        buttons = {
+        }, buttons = {
             'jcr:primaryType' : 'cq:WidgetCollection',
             'ok' : {
                 text : (config.dialog && config.dialog.okText) ? config.dialog.okText : CQ.I18n.getMessage('OK'),
@@ -450,9 +456,9 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
     },
 
     updateFieldWidth : function(maxWidth) {
-        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#updateFieldWith Max width \'{0}\' ', [maxWidth]);
+        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#updateFieldWith Max width \'{0}\' ', [ maxWidth ]);
 
-        // Three to five panels, 
+        // Three to five panels,
         // First of which is the field that needs to be resized.
         // Subtract all the buttons' sizes
         var width = 0, i = 0;
@@ -462,21 +468,21 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
         this.field.setWidth(maxWidth - width);
     },
-    
+
     updateDisplayValue : function(field, newVal, oldVal) {
 
-        var self = this,
-        hiddenField = this.dialog.findBy(function(comp) {
+        var self = this, hiddenField = this.dialog.findBy(function(comp) {
             return comp.xtype === 'hidden' && comp.name.indexOf(self.displayProperty) !== -1;
         })[0];
 
         hiddenField.setValue(newVal);
     },
-    
+
     disable : function() {
-        /* TODO need to disable the dialog if this is true
-         * but how to do that if i also want to disable the main dialog, when we open the secondary one
-        */
+        /*
+         * TODO need to disable the dialog if this is true but how to do that if i also want to disable the main dialog,
+         * when we open the secondary one
+         */
         this.disabled = true;
         this.field.disable();
     },
@@ -485,20 +491,18 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
         delete this.disabled;
         this.field.enable();
     },
-    
 
     processPath : function(path) {
-        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#processPath called with \'{0}\' ', [path]);
+        CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#processPath called with \'{0}\' ', [ path ]);
         this.path = path;
 
-        var url = this.path + CQ.shared.HTTP.EXTENSION_JSON,
-        data;
+        var url = this.path + CQ.shared.HTTP.EXTENSION_JSON, data;
 
         url = CQ.shared.HTTP.addSelector(url, 'infinity');
         url = CQ.shared.HTTP.noCaching(url);
 
         /*jslint evil: true, es5: true */
-        data =  CQ.shared.HTTP.eval(url);
+        data = CQ.shared.HTTP.eval(url);
         /*jslint evil: false, es5: false */
 
         this.field.setValue(data[this.displayProperty]);
@@ -506,16 +510,14 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
 
     /**
      * Reorders the item above the specified item.
-     * @param {CQ.form.MultiField.Item} item The item to reorder above
+     * 
+     * @param {CQ.form.MultiField.Item}
+     *            item The item to reorder above
      * @member CQ.form.MultiField.Item
      */
-    reorder: function(item) {
-        var value = item.field.getValue(),
-        dialogConfig = item.dialogConfig,
-        path = item.path,
-        dialog = item.dialog;
+    reorder : function(item) {
+        var value = item.field.getValue(), dialogConfig = item.dialogConfig, path = item.path, dialog = item.dialog;
 
-        
         item.field.setValue(this.field.getValue());
         item.dialogConfig = this.dialogConfig;
         item.path = this.path;
@@ -546,10 +548,11 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
         }
     },
 
-    submitDialog : function() {
-        var path = this.findParentByType('dialog').path,
-        editable = CQ.WCM.getEditable(path);
-        this.dialog.form.on('actioncomplete', editable.refreshSelf, editable);
+    updatePath : function(path) {
+    },
+    
+
+    submitDialog : function(path, index) {
         this.dialog.ok();
     },
 
