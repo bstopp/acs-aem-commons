@@ -37,8 +37,14 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
     // TODO Get rid of the console logs
 
     /**
-     * @config {String} addItemLabel The label to display for the addItem control. Defaults to 'Add Item'.
+     * @cfg {String} addItemLabel The label to display for the addItem control. Defaults to 'Add Item'.
      */
+
+    /**
+     * @cfg {CQ.Dialog/String} dialog
+     * The configuration of the dialog for the individual items. Either a fully defined dialog, or a path.
+     */
+    dialog : undefined,
 
     // Padding inside of the border box.
     bodyPadding : 4,
@@ -47,7 +53,13 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#constructor start.');
 
         // TODO When this is added to a dialog, make sure you can't close that dialog, while there is an ITEM one open!
-        var self = this, items = [];
+        var self = this, 
+        items = [];
+
+        if (config.dialog) {
+            this.dialog = config.dialog;
+            delete config.dialog;
+        }
 
         if (typeof config.orderable === 'undefined') {
             config.orderable = true;
@@ -108,7 +120,6 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
                 xtype : 'acs.multidialogfieldsetitem',
                 itemNamePrefix : config.itemNamePrefix,
                 displayProperty : config.displayProperty,
-                dialog : config.dialog,
                 fieldConfig : config.fieldConfig
             },
             items : [ {
@@ -175,7 +186,9 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
         });
 
         this.on('afterrender', function() {
-            var form = this.findParentByType('form').form;
+            var form = this.findParentByType('form').form,
+            dialog = this.findParentByType('dialog');
+            dialog.on('beforesubmit', CQ.Ext.createDelegate(this.validateItemDialogs, this));
             form.on('actioncomplete', CQ.Ext.createDelegate(this.submitItems, this));
         });
 
@@ -202,12 +215,15 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#addItem Adding item with node name \'{0}\'.', [ nodeName ]);
 
         // This contains a panel with the "Add Item" link and button.
-        var prev, form, itemIndex = this.items.getCount() - 1, item = this.insert(itemIndex, {});
+        var prev, form, item, 
+        itemIndex = this.items.getCount() - 1,
+        dialogCopy = this.dialog ? CQ.Util.copyObject(this.dialog) : undefined;
+        
+        item = this.insert(itemIndex, { dialog : dialogCopy });
 
         if (nodeName) {
             item.processPath(this.path + '/' + this.name + '/' + nodeName);
         }
-        item.loadDialog();
         this.doLayout();
 
         item.updateFieldWidth(this.calculateItemWidth());
@@ -215,7 +231,8 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
 
     setValue : function(value) {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#setValue value : \'{0}\'.', [ value ]);
-        var name, oldItems = this.items;
+        var name, 
+        oldItems = this.items;
 
         this.fireEvent('change', this, value, this.getValue());
         oldItems.each(function(item) {
@@ -233,6 +250,20 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
             }
         }
     },
+    
+    validateItemDialogs : function() {
+        
+        var item;
+        
+        this.items.each(function(item) {
+            if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
+                item.loadDialog();
+                if (item.validateDialog === false) {
+                    return false;
+                }
+            }
+        });
+    },
 
     submitItems : function() {
         var dialog = this.findParentByType('dialog'), 
@@ -242,17 +273,18 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
         for (idx = 0; idx < this.items.length; idx++) {
             firstItem = this.items.get(idx);
             if (firstItem instanceof ACS.CQ.MultiDialogFieldSet.Item) {
-//                firstItem.updatePath(this.path + '/' + this.name + '/' + this.itemNamePrefix + '/' + idx);
+                firstItem.updatePath(this.path + '/' + this.name + '/' + this.itemNamePrefix + idx);
                 break;
             }
         }
 
+        idx++;
         previousItem = firstItem;
         for (; idx < this.items.length; idx++) {
             item = this.items.get(idx);
 
             if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
-//                item.updatePath(this.path + '/' + this.name + '/' + this.itemNamePrefix + '/' + idx);
+                item.updatePath(this.path + '/' + this.name + '/' + this.itemNamePrefix + idx);
                 previousItem.registerNextDialog(item);
                 previousItem = item;
             }
@@ -265,42 +297,7 @@ ACS.CQ.MultiDialogFieldSet = CQ.Ext.extend(CQ.form.CompositeField, {
 
         // Submit the chain
         firstItem.submitDialog();
-        // TODO Chain the items submission;
     }
-
-// addItemFields : function(dialog) {
-//
-// // TODO Man this is ugly; what's the CCN on this?
-// this.items.each(function(item, idx) {
-// if (item instanceof ACS.CQ.MultiDialogFieldSet.Item) {
-// var name, i, fieldName, fieldValue, field,
-// hiddenObj = {},
-// fields = item.getValue();
-// for (name in fields) {
-// if (name.indexOf('.') === 0 || name.indexOf('/') === 0) {
-//
-// for (i = 0; i < fields[name].length; i++) {
-// fieldName = this.name + '/' + this.itemNamePrefix + idx + '/' + fields[name][i].name;
-// fieldValue = fields[name][i].value;
-// field = dialog.getField(fieldName);
-// if (field) {
-// if (field instanceof Array && i <= (field.length - 1)) {
-// field[i].setValue(fieldValue);
-// } else if (field instanceof Array){
-// hiddenObj[fieldName] = fieldValue;
-// }
-// } else {
-// hiddenObj[fieldName] = fieldValue;
-// }
-// CQ.Log.debug('ACS.CQ.MultiDialogFieldSet#addItemData hidden item field \'{0}\'=\'{1}\'.', [fieldName, fieldValue]);
-// }
-//                        
-// }
-// }
-// dialog.addHidden(hiddenObj);
-// }
-// }, this);
-// }
 
 });
 
@@ -320,10 +317,10 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
     constructor : function(config) {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#constructor start.');
 
-        var fieldConfig = CQ.Util.copyObject(config.fieldConfig), items = [];
+        var fieldConfig = CQ.Util.copyObject(config.fieldConfig), 
+        items = [];
 
         this.constructButtonConfig(items, fieldConfig);
-        this.constructDialog(config);
 
         config = CQ.Util.applyDefaults(config, {
             layout : 'table',
@@ -347,7 +344,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
     initComponent : function() {
         ACS.CQ.MultiDialogFieldSet.Item.superclass.initComponent.call(this);
 
-        this.field.on('change', this.updateDisplayValue, this);
     },
 
     constructButtonConfig : function(items, fieldConfig) {
@@ -403,8 +399,6 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                     iconCls : 'cq-multifield-remove',
                     template : new CQ.Ext.Template('<span><button class="x-btn" type="{0}"></button></span>'),
                     handler : function() {
-                        // TODO Doesn't work
-                        window.alert('This doesn\'t work');
                         var parent = self.ownerCt;
                         parent.remove(self);
                         parent.fireEvent('removeditem', parent);
@@ -420,40 +414,20 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
                     iconCls : 'cq-multifield-edititem',
                     template : new CQ.Ext.Template('<span><button class="x-btn" type="{0}"></button></span>'),
                     handler : function() {
-                        window.alert('Open dialog.');
+                        if (!self.field.getValue() || self.field.getValue() === '') {
+                            CQ.Ext.Msg.alert(CQ.I18n.getMessage('Error'), CQ.I18n
+                                    .getMessage('Please specify a name for the field before editing.'));
+                            return;
+                        }
+                        
+                        self.showDialog();
                     }
                 }
             });
         }
     },
 
-    constructDialog : function(config) {
 
-        var dialogConfig, self = this, hiddenField = {
-            name : './' + config.displayProperty,
-            xtype : 'hidden'
-        }, buttons = {
-            'jcr:primaryType' : 'cq:WidgetCollection',
-            'ok' : {
-                text : (config.dialog && config.dialog.okText) ? config.dialog.okText : CQ.I18n.getMessage('OK'),
-                cls : 'cq-btn-ok',
-                'handler' : function(button) {
-                    self.dialogOk();
-                }
-            },
-            'cancel' : CQ.Dialog.CANCEL
-        };
-
-        if (!config.dialog) {
-            dialogConfig = {
-                xtype : 'panel',
-                items : hiddenField,
-                buttons : buttons
-            };
-        }
-
-        this.dialogConfig = CQ.WCM.getDialogConfig(dialogConfig);
-    },
 
     updateFieldWidth : function(maxWidth) {
         CQ.Log.debug('ACS.CQ.MultiDialogFieldSet.Item#updateFieldWith Max width \'{0}\' ', [ maxWidth ]);
@@ -461,21 +435,14 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
         // Three to five panels,
         // First of which is the field that needs to be resized.
         // Subtract all the buttons' sizes
-        var width = 0, i = 0;
+        var width = 0, 
+        i = 0;
+
         for (i = 1; i < this.items.length; i++) {
             width += this.items.get(i).getSize().width;
         }
 
         this.field.setWidth(maxWidth - width);
-    },
-
-    updateDisplayValue : function(field, newVal, oldVal) {
-
-        var self = this, hiddenField = this.dialog.findBy(function(comp) {
-            return comp.xtype === 'hidden' && comp.name.indexOf(self.displayProperty) !== -1;
-        })[0];
-
-        hiddenField.setValue(newVal);
     },
 
     disable : function() {
@@ -516,7 +483,10 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
      * @member CQ.form.MultiField.Item
      */
     reorder : function(item) {
-        var value = item.field.getValue(), dialogConfig = item.dialogConfig, path = item.path, dialog = item.dialog;
+        var value = item.field.getValue(), 
+        dialogConfig = item.dialogConfig, 
+        path = item.path, 
+        dialog = item.dialog;
 
         item.field.setValue(this.field.getValue());
         item.dialogConfig = this.dialogConfig;
@@ -529,9 +499,137 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
         this.dialog = dialog;
     },
 
+    constructDialogConfig : function(config) {
+
+        var url, 
+        dialogConfig, 
+        parentDialog, 
+        parentEditable,
+        self,
+        hiddenField,
+        okConfig,
+        cancelConfig;
+
+        self = this; 
+
+        // TODO Move this to be added after the dialog is created.
+        hiddenField = {
+            name : './' + this.displayProperty,
+            xtype : 'hidden'
+        };
+
+        if (!config) {
+            dialogConfig = {
+                xtype : 'panel',
+                items : [ hiddenField ]
+            };
+            
+        } else {
+            if (typeof config === 'string') {
+                url = config;
+                url = CQ.shared.HTTP.noCaching(url);
+                /*jslint evil: true, es5: true */
+                dialogConfig = CQ.shared.HTTP.eval(url);
+                /*jslint evil: false, es5: false */
+            } else {
+                dialogConfig = config;
+            }
+        }    
+
+        // This has to be copied from EditBase.getEditDialog
+        // Since there is a bug in WCM.edit()
+        dialogConfig = CQ.WCM.getDialogConfig(dialogConfig);
+        dialogConfig.title = CQ.I18n.getMessage("Edit '{0}' Item", this.field.getValue());
+        
+        dialogConfig = CQ.Util.applyDefaults(dialogConfig, {
+                "params" : {
+                    "./jcr:lastModified" : "",
+                    "./jcr:lastModifiedBy" : ""
+                }
+            });
+
+        parentDialog = this.findParentByType('dialog');
+        parentEditable = CQ.WCM.getEditable(parentDialog.path);
+
+        if (parentEditable.enableLiveRelationship) {
+            dialogConfig = CQ.Util.applyDefaults(dialogConfig, {
+                    "editLockMode" : true,
+                    "editLock" : !parentEditable[CQ.wcm.msm.MSM.PARAM_LIVE_RELATIONSHIP][CQ.wcm.msm.MSM.PARAM_STATUS][CQ.wcm.msm.MSM.PARAM_IS_CANCELLED],
+                    "editLockDisabled" : !parentEditable[CQ.wcm.msm.MSM.PARAM_LIVE_RELATIONSHIP][CQ.wcm.msm.MSM.PARAM_STATUS][CQ.wcm.msm.MSM.PARAM_IS_EDITABLE],
+                    "editLockDisabledTitle" : CQ.I18n.getMessage("Inheritance is broken at the page or parent level")
+                });
+        }
+
+        dialogConfig.y = this.el.getY() + this.field.el.getHeight();
+        this.constructButtons(dialogConfig);
+        return dialogConfig;
+    },
+
+    constructButtons : function(config) {
+        var 
+        self = this,
+        okConfig = {
+            text: config.okText ? config.okText : CQ.I18n.getMessage("OK"),
+            cls: "cq-btn-ok",
+            handler: function(button) {
+                self.dialogOk(button);
+            }
+        },
+        cancelConfig = {
+            text: config.cancelText ? config.cancelText : CQ.I18n.getMessage("Cancel"),
+            cls: "cq-btn-cancel",
+            handler: function(button) {
+                // Cancel undo
+                if (CQ.undo.UndoManager.isEnabled()) {
+                    CQ.undo.UndoManager.getHistory().cancelUndo();
+                }
+                // scope: "this" is a dialog instance
+                self.dialogCancel();
+                this[this.closeAction]();
+            }
+        };
+        
+        config.buttons = [ okConfig, cancelConfig ];
+    },
+
     loadDialog : function() {
-        this.dialog = CQ.Util.build(this.dialogConfig);
-        this.dialog.loadContent(this.path);
+        
+        var dialogConfig,
+        dialog,
+        parentDialog,
+        parentEditable,
+        fct = function() {
+            parentEditable.switchLock(dialog);
+        };
+
+        if (!this.dialog || !(this.dialog instanceof CQ.Dialog)) {
+            dialogConfig = this.constructDialogConfig(this.dialog);
+            dialog = CQ.WCM.getDialog(dialogConfig);
+            dialog.loadContent(this.path);
+
+            parentDialog = this.findParentByType('dialog');
+            parentEditable = CQ.WCM.getEditable(parentDialog.path);
+
+            // Copied from EditBase.showDialog()
+            if (parentEditable.enableLiveRelationship) {
+
+                dialog.on("beforeeditlocked", fct);
+                dialog.on("beforeeditunlocked", fct);
+
+                dialog.on("beforeshow", function() {
+                    dialog.editLock = this.liveStatusLocked;
+                }, parentEditable);
+            }
+
+            dialog.on('beforesubmit', this.updateHiddenDisplay, this);
+            this.dialog = dialog;
+        }
+    },
+
+    showDialog : function() {
+        this.loadDialog();
+        this.findParentByType('dialog').disable();
+        this.dialog.show();
     },
 
     validateDialog : function() {
@@ -549,19 +647,35 @@ ACS.CQ.MultiDialogFieldSet.Item = CQ.Ext.extend(CQ.Ext.Panel, {
     },
 
     updatePath : function(path) {
+        this.path = path;
+        this.dialog.path = path;
+        this.dialog.setFormUrl(path);
+    },
+
+    updateHiddenDisplay : function() {
+        var self = this, 
+        value = this.field.getValue(),
+        hiddenField = this.dialog.findBy(function(comp) {
+            return comp.xtype === 'hidden' && comp.name.indexOf(self.displayProperty) !== -1;
+        })[0];
+        hiddenField.setValue(value);
+
+    },
+
+    dialogOk : function() {
+        window.alert('Dialog Ok!');
     },
     
+    dialogCancel : function() {
+        this.findParentByType('dialog').enable();
+    },
 
-    submitDialog : function(path, index) {
+    submitDialog : function() {
         this.dialog.ok();
     },
 
     registerNextDialog : function(next) {
         this.dialog.form.on('actioncomplete', next.submitDialog, next);
-    },
-
-    dialogOk : function() {
-        window.alert('Dialog Ok!');
     }
 
 });
